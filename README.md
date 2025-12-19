@@ -1,11 +1,11 @@
-##  Початок
+##  Інсталяція
 ```bash
 docker compose build
 
 docker compose up -d
 
 docker compose ps
-docker logs metrics-collector -f
+docker logs metrics-collector -f # перевірка збору інформації
 
 # http://localhost:3000 (admin/admin123)
 
