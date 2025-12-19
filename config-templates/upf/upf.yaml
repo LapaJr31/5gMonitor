@@ -1,0 +1,25 @@
+logger:
+    file:
+      path: /var/log/open5gs/upf.log
+
+global:
+  max:
+    ue: MAX_NUM_UE
+
+upf:
+    pfcp:
+      server:
+        - address: UPF_IP
+      client:
+        smf:
+          - uri: pfcp://SMF_IP:8805
+    gtpu:
+      server:
+        - address: UPF_IP
+    subnet:
+      - addr: UE_IPV4_INTERNET
+        dnn: internet
+    metrics:
+      server:
+        - address: UPF_IP
+          port: 9090

@@ -1,0 +1,280 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    command: --bind_ip 0.0.0.0
+    env_file:
+      - .env
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      net5g:
+        ipv4_address: ${MONGO_IP}
+
+  nrf:
+    image: open5gs:local
+    container_name: nrf
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/nrf:/mnt/nrf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${NRF_IP}
+    command: /bin/bash /mnt/nrf/nrf_init.sh
+
+  scp:
+    image: open5gs:local
+    container_name: scp
+    depends_on:
+      - nrf
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/scp:/mnt/scp
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${SCP_IP}
+    command: /bin/bash /mnt/scp/scp_init.sh
+
+  ausf:
+    image: open5gs:local
+    container_name: ausf
+    depends_on:
+      - nrf
+      - scp
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/ausf:/mnt/ausf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${AUSF_IP}
+    command: /bin/bash /mnt/ausf/ausf_init.sh
+
+  udm:
+    image: open5gs:local
+    container_name: udm
+    depends_on:
+      - nrf
+      - scp
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/udm:/mnt/udm
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${UDM_IP}
+    command: /bin/bash /mnt/udm/udm_init.sh
+
+  udr:
+    image: open5gs:local
+    container_name: udr
+    depends_on:
+      - nrf
+      - scp
+      - mongodb
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/udr:/mnt/udr
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${UDR_IP}
+    command: /bin/bash /mnt/udr/udr_init.sh
+
+  pcf:
+    image: open5gs:local
+    container_name: pcf
+    depends_on:
+      - nrf
+      - scp
+      - mongodb
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/pcf:/mnt/pcf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${PCF_IP}
+    command: /bin/bash /mnt/pcf/pcf_init.sh
+
+  nssf:
+    image: open5gs:local
+    container_name: nssf
+    depends_on:
+      - nrf
+      - scp
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/nssf:/mnt/nssf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${NSSF_IP}
+    command: /bin/bash /mnt/nssf/nssf_init.sh
+
+  bsf:
+    image: open5gs:local
+    container_name: bsf
+    depends_on:
+      - nrf
+      - scp
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/bsf:/mnt/bsf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${BSF_IP}
+    command: /bin/bash /mnt/bsf/bsf_init.sh
+
+  amf:
+    image: open5gs:local
+    container_name: amf
+    depends_on:
+      - nrf
+      - scp
+      - ausf
+      - udm
+      - pcf
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/amf:/mnt/amf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${AMF_IP}
+    command: /bin/bash /mnt/amf/amf_init.sh
+
+  smf:
+    image: open5gs:local
+    container_name: smf
+    depends_on:
+      - nrf
+      - scp
+    env_file:
+      - .env
+    volumes:
+      - ./config-templates/smf:/mnt/smf
+      - ./log:/var/log/open5gs
+    networks:
+      net5g:
+        ipv4_address: ${SMF_IP}
+    command: /bin/bash /mnt/smf/smf_init.sh
+
+  upf:
+    image: open5gs:local
+    container_name: upf
+    depends_on:
+      - nrf
+      - smf
+    env_file:
+      - .env
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    privileged: true
+    volumes:
+      - ./config-templates/upf:/mnt/upf
+      - ./log:/var/log/open5gs
+      - /lib/modules:/lib/modules:ro
+    networks:
+      net5g:
+        ipv4_address: ${UPF_IP}
+    command: /bin/bash /mnt/upf/upf_init.sh
+
+  ueransim:
+    build:
+      context: ./ueransim
+      dockerfile: Dockerfile
+    container_name: ueransim
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./ueransim-config:/root/ueransim-config
+    networks:
+      net5g:
+        ipv4_address: ${NR_GNB_IP}
+    depends_on:
+      - amf
+      - upf
+    command: sleep infinity
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    environment:
+      INFLUXDB_DB: 5g_metrics
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: admin123
+      INFLUXDB_HTTP_AUTH_ENABLED: "true"
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      net5g:
+        ipv4_address: ${INFLUXDB_IP}
+
+  metrics-collector:
+    build:
+      context: ./metrics-collector
+      dockerfile: Dockerfile
+    container_name: metrics-collector
+    depends_on:
+      - influxdb
+      - amf
+      - smf
+      - upf
+      - pcf
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: my-super-secret-token
+      INFLUXDB_ORG: primary
+      INFLUXDB_BUCKET: 5g_metrics
+    networks:
+      net5g:
+        ipv4_address: ${METRICS_COLLECTOR_IP}
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      net5g:
+        ipv4_address: ${GRAFANA_IP}
+
+networks:
+  net5g:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${TEST_NETWORK}
+
+volumes:
+  mongodb_data:
+  influxdb_data:
+  grafana_data:

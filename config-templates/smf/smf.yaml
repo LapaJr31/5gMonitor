@@ -1,0 +1,44 @@
+logger:
+    file:
+      path: /var/log/open5gs/smf.log
+
+sbi:
+    server:
+      no_tls: true
+    client:
+      no_tls: true
+
+global:
+  max:
+    ue: MAX_NUM_UE
+
+smf:
+    sbi:
+      server:
+        - address: SMF_IP
+          port: 7777
+      client:
+        scp:
+          - uri: http://SCP_IP:7777
+    pfcp:
+      server:
+        - address: SMF_IP
+      client:
+        upf:
+          - uri: pfcp://UPF_IP:8805
+    gtpc:
+      server:
+        - address: SMF_IP
+    gtpu:
+      server:
+        - address: SMF_IP
+    metrics:
+      server:
+        - address: SMF_IP
+          port: 9090
+    subnet:
+      - addr: UE_IPV4_INTERNET
+        dnn: internet
+    dns:
+      - SMF_DNS1
+      - SMF_DNS2

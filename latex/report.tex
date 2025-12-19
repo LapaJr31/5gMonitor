@@ -1,0 +1,521 @@
+\documentclass[a4paper,14pt]{extarticle}
+\usepackage{fontspec}
+\usepackage[ukrainian]{babel}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+
+\geometry{
+    left=30mm,
+    right=15mm,
+    top=20mm,
+    bottom=20mm
+}
+
+\onehalfspacing
+\setlength{\parindent}{1.25cm}
+
+% Define a continuation symbol for broken lines
+\lstdefinestyle{yaml}{
+    language=bash,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    backgroundcolor=\color{gray!10},
+    commentstyle=\color{green!60!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false
+}
+
+\lstdefinestyle{python}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    backgroundcolor=\color{gray!10},
+    commentstyle=\color{green!60!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false
+}
+
+\lstdefinestyle{bash}{
+    language=bash,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    backgroundcolor=\color{gray!10},
+    commentstyle=\color{green!60!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false
+}
+
+\begin{document}
+
+% Титульна сторінка
+\begin{titlepage}
+	\centering
+	\textbf{НАЦІОНАЛЬНИЙ ТЕХНІЧНИЙ УНІВЕРСИТЕТ УКРАЇНИ\\
+		«КИЇВСЬКИЙ ПОЛІТЕХНІЧНИЙ ІНСТИТУТ\\
+		ІМЕНІ ІГОРЯ СІКОРСЬКОГО»}
+
+	\vspace{1cm}
+
+	\textbf{Факультет інформатики та обчислювальної техніки}\\
+	Кафедра обчислювальної техніки
+
+	\vfill
+
+	\textbf{\Large ЗВІТ}\\
+	\vspace{0.5cm}
+	\textbf{\Large з дисципліни «Мобільні мережі»}\\
+	\vspace{0.5cm}
+	\textbf{\large на тему:}\\
+	\vspace{0.3cm}
+	\textbf{\Large «Розгортання тестового стенду 5G мережі\\з системою моніторингу метрик»}
+
+	\vfill
+
+	\begin{flushright}
+		Виконав:\\
+		студент групи ІО-26\\
+		Ярослав Латипов\\
+		\vspace{1cm}
+		Перевірив:\\
+		Юрій Кулаков
+	\end{flushright}
+
+	\vfill
+
+	Київ --- 2025
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Вступ}
+
+Мережі п'ятого покоління (5G) є ключовою технологією сучасних телекомунікацій, що забезпечує високу швидкість передачі даних, низьку затримку та підтримку великої кількості підключених пристроїв. Для дослідження та тестування 5G протоколів необхідне створення тестового середовища, яке дозволяє моделювати роботу мережі без фізичного обладнання.
+
+\textbf{Мета роботи:} розгорнути повнофункціональний тестовий стенд 5G мережі з автоматичним збором метрик та візуалізацією продуктивності.
+
+\textbf{Завдання:}
+\begin{itemize}
+	\item Розгорнути ядро 5G мережі (5G Core Network) на базі Open5GS
+	\item Налаштувати симулятор радіомережі UERANSIM
+	\item Реалізувати систему збору метрик з використанням InfluxDB
+	\item Створити дашборд для візуалізації метрик в Grafana
+	\item Імплементувати симулятор трафіку з різними моделями поведінки користувачів
+\end{itemize}
+
+\section{Архітектура системи}
+
+\subsection{Компоненти 5G Core Network}
+
+Для побудови ядра мережі використано Open5GS v2.7.6 --- відкриту реалізацію 5G Standalone Architecture. Система включає 11 мережевих функцій (Network Functions):
+
+\begin{itemize}
+	\item \textbf{AMF} (Access and Mobility Management Function) --- управління доступом та мобільністю
+	\item \textbf{SMF} (Session Management Function) --- управління сесіями передачі даних
+	\item \textbf{UPF} (User Plane Function) --- обробка користувацького трафіку
+	\item \textbf{NRF} (NF Repository Function) --- реєстр мережевих функцій
+	\item \textbf{SCP} (Service Communication Proxy) --- проксі для міжсервісної комунікації
+	\item \textbf{AUSF} (Authentication Server Function) --- сервер автентифікації
+	\item \textbf{UDM} (Unified Data Management) --- управління даними користувачів
+	\item \textbf{UDR} (Unified Data Repository) --- репозиторій даних
+	\item \textbf{PCF} (Policy Control Function) --- управління політиками QoS
+	\item \textbf{NSSF} (Network Slice Selection Function) --- вибір мережевого зрізу
+	\item \textbf{BSF} (Binding Support Function) --- підтримка прив'язки сесій
+\end{itemize}
+
+\subsection{Симулятор радіомережі}
+
+UERANSIM v3.2.7 використано для симуляції gNB (базової станції 5G) та UE (користувацьких пристроїв). Симулятор підтримує протоколи NGAP (зв'язок з AMF), NAS (Non-Access Stratum) та RRC (Radio Resource Control).
+
+\subsection{Мережева топологія}
+
+Всі компоненти розгорнуто в Docker-контейнерах у виділеній мережі 10.10.0.0/16 зі статичним призначенням IP-адрес:
+
+\begin{itemize}
+	\item MongoDB: 10.10.0.2 (база даних підписників)
+	\item NRF: 10.10.0.12, SCP: 10.10.0.35
+	\item AMF: 10.10.0.50, SMF: 10.10.0.7, UPF: 10.10.0.8
+	\item PCF: 10.10.0.27, AUSF: 10.10.0.11, UDM: 10.10.0.13
+	\item UERANSIM gNB: 10.10.0.23
+\end{itemize}
+
+\section{Реалізація}
+
+\subsection{Контейнеризація}
+
+Створено Docker-образ для Open5GS з увімкненими Prometheus-метриками на порту 9090. Для кожної мережевої функції реалізовано:
+
+\begin{enumerate}
+	\item Шаблони конфігураційних файлів YAML з плейсхолдерами змінних
+	\item Ініціалізаційні скрипти для підстановки IP-адрес через sed
+	\item Автоматичний запуск демона після конфігурації
+\end{enumerate}
+
+Приклад опису сервісу AMF в docker-compose.yml:
+
+\begin{lstlisting}[style=yaml, caption=Docker Compose конфігурація AMF]
+amf:
+  image: open5gs:local
+  container_name: amf
+  depends_on:
+    - nrf
+    - scp
+  env_file:
+    - .env
+  volumes:
+    - ./config-templates/amf:/mnt/amf
+    - ./log:/var/log/open5gs
+  networks:
+    net5g:
+      ipv4_address: ${AMF_IP}
+  command: /bin/bash /mnt/amf/amf_init.sh
+\end{lstlisting}
+
+Ініціалізаційний скрипт виконує підстановку змінних та запуск сервісу:
+
+\begin{lstlisting}[style=bash, caption=Ініціалізаційний скрипт AMF]
+#!/bin/bash
+cp /mnt/amf/amf.yaml /etc/open5gs/
+
+sed -i 's|AMF_IP|'$AMF_IP'|g' /etc/open5gs/amf.yaml
+sed -i 's|SCP_IP|'$SCP_IP'|g' /etc/open5gs/amf.yaml
+sed -i 's|NRF_IP|'$NRF_IP'|g' /etc/open5gs/amf.yaml
+
+exec open5gs-amfd -c /etc/open5gs/amf.yaml
+\end{lstlisting}
+
+\subsection{Service Discovery}
+
+Всі мережеві функції реєструються в NRF та взаємодіють через SCP, що забезпечує:
+\begin{itemize}
+	\item Централізоване виявлення сервісів
+	\item Балансування навантаження
+	\item Відмовостійкість системи
+\end{itemize}
+
+Конфігурація SMF для взаємодії через SCP:
+
+\begin{lstlisting}[style=yaml, caption=Фрагмент конфігурації SMF]
+smf:
+  sbi:
+    server:
+      - address: SMF_IP
+        port: 7777
+    client:
+      scp:
+        - uri: http://SCP_IP:7777
+  pfcp:
+    client:
+      upf:
+        - address: UPF_IP
+  session:
+    - subnet: 10.45.0.0/16
+      dnn: internet
+\end{lstlisting}
+
+\subsection{Аутентифікація UE}
+
+В MongoDB зареєстровано 10 підписників з наступними параметрами безпеки:
+\begin{itemize}
+	\item IMSI: 286010000000001-010 (MCC=286, MNC=01)
+	\item Алгоритм: MILENAGE (K, OP, AMF)
+	\item Network Slice: SST=1 (eMBB)
+	\item DNN: internet
+\end{itemize}
+
+\subsection{Симуляція трафіку}
+
+Розроблено скрипт автоматизованої симуляції з 5 моделями поведінки користувачів:
+
+\begin{enumerate}
+	\item \textbf{Browsing} --- переривчастий трафік (імітація веб-серфінгу)
+	\item \textbf{Streaming} --- постійний інтенсивний трафік (відео)
+	\item \textbf{Messaging} --- рідкісні короткі пакети (месенджери)
+	\item \textbf{Idle} --- мінімальний keepalive трафік
+	\item \textbf{Downloading} --- пульсуючі періоди високого навантаження
+\end{enumerate}
+
+Приклад реалізації моделі поведінки:
+
+\begin{lstlisting}[style=bash, caption=Функція симуляції трафіку]
+start_ue() {
+    local ue_num=$1
+    local behavior=$2
+
+    docker exec -d ueransim bash -c \
+        "cd /root/ueransim/build && \
+         ./nr-ue -c /tmp/ue-$ue_num.yaml"
+
+    sleep 5
+
+    case $behavior in
+        "streaming")
+            docker exec -d ueransim bash -c \
+                "ping -I uesimtun$((ue_num-1)) \
+                 -i 0.2 8.8.8.8"
+            ;;
+        "browsing")
+            docker exec -d ueransim bash -c \
+                "while true; do \
+                   ping -c 5 -i 0.5 8.8.8.8; \
+                   sleep 10; \
+                 done"
+            ;;
+    esac
+}
+\end{lstlisting}
+
+Симулятор автоматично змінює кількість активних UE та їх поведінку кожні 30 секунд для створення реалістичного навантаження.
+
+\section{Система моніторингу}
+
+\subsection{Збір метрик}
+
+Створено Python-колектор на базі influxdb-client, що виконує:
+
+\begin{enumerate}
+	\item Запит Prometheus-ендпоінтів всіх NF кожні 30 секунд
+	\item Парсинг метрик формату Prometheus (підтримка labels)
+	\item Розрахунок KPI (Key Performance Indicators):
+	      \begin{itemize}
+		      \item Кількість підключених пристроїв (Connected Devices)
+		      \item Активні сесії на рівні AMF
+		      \item PDU-сесії з QoS-політиками (SMF)
+		      \item Сесії користувацької площини (UPF)
+		      \item Час безвідмовної роботи мережі
+	      \end{itemize}
+	\item Запис у дві таблиці InfluxDB:
+	      \begin{itemize}
+		      \item \texttt{5g\_metrics} --- сирі метрики з тегами
+		      \item \texttt{network\_kpi} --- агреговані KPI
+	      \end{itemize}
+\end{enumerate}
+
+Фрагмент коду колектора метрик:
+
+\begin{lstlisting}[style=python, caption=Python-колектор метрик]
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+import requests
+
+ENDPOINTS = {
+    'amf': 'http://10.10.0.50:9090/metrics',
+    'smf': 'http://10.10.0.7:9090/metrics',
+}
+
+client = InfluxDBClient(
+    url='http://influxdb:8086',
+    token='my-token',
+    org='primary'
+)
+
+def calculate_kpis(raw_metrics):
+    kpis = {
+        'connected_devices': 0,
+        'active_sessions': 0,
+    }
+
+    for service, metrics in raw_metrics.items():
+        for metric in metrics:
+            if 'ue' in metric['name']:
+                kpis['connected_devices'] += \
+                    int(metric['value'])
+
+    return kpis
+
+def collect_metrics():
+    for service, endpoint in ENDPOINTS.items():
+        response = requests.get(endpoint)
+        metrics = parse_prometheus(response.text)
+
+        for metric in metrics:
+            point = Point("5g_metrics") \
+                .tag("service", service) \
+                .field("value", metric['value'])
+            write_api.write(
+                bucket='5g_metrics',
+                record=point
+            )
+\end{lstlisting}
+
+\subsection{Візуалізація в Grafana}
+
+Розроблено дашборд з такими панелями:
+
+\textbf{Верхній ряд (статистика в реальному часі):}
+\begin{itemize}
+	\item Connected Devices --- кількість зареєстрованих UE
+	\item Active Sessions --- сигнальні з'єднання AMF
+	\item PDU Sessions --- сесії передачі даних SMF
+	\item Data Sessions --- активні потоки UPF
+	\item Network Uptime --- час роботи системи
+	\item Network Services --- кількість функціональних NF
+\end{itemize}
+
+\textbf{Часові графіки:}
+\begin{itemize}
+	\item Динаміка підключених пристроїв (вікно 30 сек)
+	\item Тренди сесій AMF/SMF/UPF з окремими лініями
+	\item Heatmap активності мережі по хвилинах
+	\item Швидкість збору метрик по сервісам
+\end{itemize}
+
+\textbf{Таблиці:}
+\begin{itemize}
+	\item Service Health --- кількість метрик/хв від кожної NF
+	\item Live Network Status --- поточний стан всіх компонентів
+\end{itemize}
+
+Приклад Flux-запиту для панелі Connected Devices:
+
+\begin{lstlisting}[style=yaml, caption=Flux-запит для Grafana]
+from(bucket: "5g_metrics")
+  |> range(start: -30s)
+  |> filter(fn: (r) =>
+      r._measurement == "network_kpi")
+  |> filter(fn: (r) =>
+      r.metric_type == "connected_devices")
+  |> last()
+\end{lstlisting}
+
+\section{Результати}
+
+\subsection{Функціональність системи}
+
+Розгорнутий тестовий стенд успішно демонструє:
+
+\begin{enumerate}
+	\item \textbf{Повний цикл реєстрації UE:}
+	      \begin{itemize}
+		      \item Initial Registration Request → AMF
+		      \item Authentication (AUSF, UDM)
+		      \item Security Mode Command
+		      \item Registration Accept
+	      \end{itemize}
+
+	\item \textbf{Встановлення PDU-сесії:}
+	      \begin{itemize}
+		      \item PDU Session Establishment Request
+		      \item SMF allocates IP (10.45.0.0/16 pool)
+		      \item PFCP Session Establishment (SMF-UPF)
+		      \item GTP-U tunnel creation
+	      \end{itemize}
+
+	\item \textbf{Передача даних:}
+	      \begin{itemize}
+		      \item UE отримує IP-адресу через TUN-інтерфейс
+		      \item Трафік передається через GTP-U тунель
+		      \item UPF виконує NAT для доступу до зовнішніх мереж
+	      \end{itemize}
+\end{enumerate}
+
+\subsection{Метрики продуктивності}
+
+На момент тестування з 5 активними UE дашборд показує:
+
+\begin{itemize}
+	\item \textbf{Connected Devices: 2} --- два UE успішно зареєстровані в AMF
+	\item \textbf{Active Sessions: 2} --- дві активні NAS-сесії
+	\item \textbf{PDU Sessions: 19} --- дев'ятнадцять сесій даних зі встановленими QoS-правилами
+	\item \textbf{Data Sessions: 5} --- п'ять активних GTP-U тунелів у UPF
+	\item \textbf{Network Uptime: 6.7 хв} --- система працює стабільно
+	\item \textbf{Metrics Rate: 40-87/хв} --- інтенсивність збору метрик варіюється залежно від активності NF
+\end{itemize}
+
+Графіки демонструють:
+\begin{itemize}
+	\item Стрибкоподібне зростання Connected Devices при підключенні нових UE
+	\item Стабільне утримання PDU Sessions протягом активної сесії
+	\item Періодичні спалахи активності в Network Activity Heatmap під час реєстрації UE
+	\item Рівномірний Service Metrics Rate, що підтверджує стабільну роботу всіх NF
+\end{itemize}
+
+\subsection{Верифікація протокольного стеку}
+
+Логи підтверджують проходження повного 5G протокольного стеку:
+
+\begin{enumerate}
+	\item \textbf{RRC} (Radio Resource Control) --- встановлення з'єднання з gNB
+	\item \textbf{NGAP} (NG Application Protocol) --- Initial UE Message до AMF
+	\item \textbf{NAS} (Non-Access Stratum) --- Registration Request/Accept
+	\item \textbf{HTTP/2 SBI} --- міжсервісна взаємодія через SCP
+	\item \textbf{PFCP} (Packet Forwarding Control Protocol) --- управління UPF
+	\item \textbf{GTP-U} (GPRS Tunneling Protocol) --- інкапсуляція користувацького трафіку
+\end{enumerate}
+
+\section{Висновки}
+
+В результаті виконання роботи створено повнофункціональний тестовий стенд 5G мережі, що включає:
+
+\begin{enumerate}
+	\item Контейнеризоване ядро 5G мережі з 11 мережевими функціями (Open5GS)
+	\item Симулятор радіомережі з підтримкою множинних UE (UERANSIM)
+	\item Автоматизовану систему збору метрик з розрахунком KPI
+	\item Дашборд реального часу для візуалізації продуктивності
+	\item Генератор реалістичного трафіку з 5 моделями поведінки
+\end{enumerate}
+
+Стенд дозволяє:
+\begin{itemize}
+	\item Тестувати 5G протоколи (NGAP, NAS, PFCP, GTP-U)
+	\item Аналізувати продуктивність мережевих функцій
+	\item Моделювати різні сценарії навантаження
+	\item Досліджувати процеси реєстрації, автентифікації та передачі даних
+	\item Відстежувати метрики в реальному часі
+\end{itemize}
+
+Система демонструє стабільну роботу з 10 зареєстрованими підписниками та підтримує одночасну роботу 5+ UE з різними профілями використання. Архітектура забезпечує масштабованість через Docker та service discovery via SCP.
+
+Тестовий стенд може використовуватись для навчальних цілей, дослідження 5G протоколів та розробки нових мережевих функцій.
+
+\begin{thebibliography}{9}
+	\bibitem{open5gs}
+	Open5GS Project. \textit{Open Source implementation for 5G Core and EPC}. \url{https://open5gs.org/}
+
+	\bibitem{ueransim}
+	UERANSIM Project. \textit{Open source 5G UE and RAN (gNodeB) simulator}. \url{https://github.com/aligungr/UERANSIM}
+
+	\bibitem{3gpp}
+	3GPP. \textit{TS 23.501: System architecture for the 5G System (5GS)}. Version 17.8.0, 2023.
+
+	\bibitem{influxdb}
+	InfluxData. \textit{InfluxDB: Time Series Database}. \url{https://www.influxdata.com/}
+
+	\bibitem{grafana}
+	Grafana Labs. \textit{Grafana: The open observability platform}. \url{https://grafana.com/}
+\end{thebibliography}
+
+\end{document}
